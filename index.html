@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html><head>
+  <h3>Jenna Landy, jpl323</h3>
+  
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+  
+
+  </head>
+  <body>
+
+
+    <p id="p1">
+      <b>Problem 1 SVG:</b><br>
+  
+      <div><svg id = "svg1" height=420 width=420 ></svg></div>
+      <div><input type = "range" id = "range1" value =80 min=0 max=200 step=1 style="width: 415px"> </div>
+      <div></div>
+
+      <script>
+      
+      let svg1 = d3.select("svg#svg1");
+      let r1 = d3.select("range#range1")
+      const svg1width = svg1.attr('width');
+      const svg1height = svg1.attr('height');
+ 
+      let arr1 = [];
+
+      for (let a = -160; a <= 160; a+=16)
+        {
+          for (let b = -160; b <= 160; b+=16) 
+          { 
+              arr1.push({'a':a , 'b':b})
+          }
+        }
+
+        let aScale = d3.scaleLinear()
+                         .domain([-160,160])
+                         .range([10,svg1width-10]);        
+
+        let bScale = d3.scaleLinear()
+                         .domain([-160,160])
+                         .range([svg1height-10,10]); 
+
+
+        d3.select("#range1").on("input", function() {
+          showCircles(this.value);
+        });
+
+        showCircles(80)
+
+        function showCircles(luminosity) 
+        {
+        
+        svg1.selectAll("circle").data(arr1)
+                  .join("circle")  
+                  .attr("r", 10)
+                  .attr("cx", d => aScale(d['a']) ) 
+                  .attr("cy", d => bScale(d['b']) ) 
+                  .attr("fill", d => d3.lab(luminosity, d['a'], d['b'])) ;
+        } 
+
+  </script>
+
+  </p>
+
+
+  <p id="p2">
+    <br><br><b>Problem 2 SVG:</b><br>
+
+    <div><svg id = "svg2" height=500 width=800 style="border:1px solid rgb(154, 151, 151);"></svg></div>
+    <div><text id="legend" text-anchor="end" alignment-baseline="hanging">
+    </text></div>
+  
+      <style>
+
+      .gridlines .domain
+      {
+        display: none;
+      }
+
+      .gridlines line
+      {
+          stroke: #D3D3D3;
+      }
+
+    </style>
+
+    <script>
+  
+
+  let svg2 = d3.select("svg#svg2");
+      const svg2width = svg2.attr('width');
+      const svg2height = svg2.attr('height');
+      const svg2margins = {top: 15, right: 10, bottom: 40, left: 55};
+      const svg2chWidth = svg2width - svg2margins.left - svg2margins.right;
+      const svg2chHeight = svg2height - svg2margins.top - svg2margins.bottom;
+      let states = ['Alabama','Alaska','Arizona','Arkansas','California','Colorado','Connecticut','Delaware','Florida','Georgia','Hawaii','Idaho','Illinois','Indiana','Iowa','Kansas','Kentucky','Louisiana','Maine','Maryland','Massachusetts','Michigan','Minnesota','Mississippi','Missouri','Montana','Nebraska','Nevada','New Hampshire','New Jersey','New Mexico','New York','North Carolina','North Dakota','Ohio','Oklahoma','Oregon','Pennsylvania','Rhode Island','South Carolina','South Dakota','Tennessee','Texas','Utah','Vermont','Virginia','Washington','West Virginia','Wisconsin','Wyoming'];
+
+    d3.json('/wines.json').then( (data) => {
+
+      //Make sure states are right
+      data = data.filter(a => states.includes(a.state)===true);
+
+      //Points are out of 100
+      data = data.filter(a => a.points<=100===true);
+      
+      data.forEach( d => 
+      {
+        
+      // Fix non applicables
+      Object.keys(d).forEach (k =>
+      {
+        if(d[k]==='N/A' || d[k]==='NA')
+          {
+            d[k]="";
+          }
+      })
+      // Make price and points into numbers
+      d['price'] =  Number(d['price'].replace(/,/g,"").replace(/\$/g,""));
+      d['points'] =  Number(d['points']);
+
+      });
+
+      //Country exists
+      data = data.filter(a => a.country===""===false);
+
+      console.log(data)
+
+      let labels = svg2.append("g");
+
+
+      let ptsExt = d3.extent(data, d=>d['points']);
+      let ptsScale = d3.scaleLinear()
+                         .domain(ptsExt)
+                         .range([svg2chHeight,0]);
+
+      let leftAxis = d3.axisLeft(ptsScale).tickFormat(d=>{ return ""+d+" pts" });
+      let leftGrid = d3.axisLeft(ptsScale)
+                       .tickSize(-svg2chWidth-10)
+                       .tickFormat("")
+
+      labels.append("g")
+            .attr("class", "y axis")
+            .attr("transform",`translate(${svg2margins.left-10},${svg2margins.top})`)
+            .call(leftAxis)
+      labels.append("g")
+            .attr("class", "y gridlines")
+            .attr("transform",`translate(${svg2margins.left-10},${svg2margins.top})`)
+            .call(leftGrid) 
+            
+      let priceExt = d3.extent(data, d=>d['price']);
+      let priceScale = d3.scaleLog()
+                         .domain(priceExt)
+                         .range([0,svg2chWidth]);
+
+      let bottomAxis = d3.axisBottom(priceScale).tickFormat(d=>{ return "$"+d});
+      let bottomGrid = d3.axisBottom(priceScale)
+                       .tickSize(-svg2chHeight-10)
+                       .tickFormat("")
+      
+      labels.append("g")
+            .attr("class", "x axis")
+            .attr("transform",`translate(${svg2margins.left},${svg2chHeight+svg2margins.top+10})`)
+            .call(bottomAxis)
+      labels.append("g")
+            .attr("class", "x gridlines")
+            .attr("transform",`translate(${svg2margins.left},${svg2chHeight+svg2margins.top+10})`)
+            .call(bottomGrid)
+
+    let area = svg2.append("g").attr("id","points")
+                          .attr("transform",`translate(${svg2margins.left},${svg2margins.top})`);
+
+    
+    function jitter() 
+      {
+      return Math.floor(((Math.random()*8)-4))
+      }
+
+
+    let stateScale = d3.scaleOrdinal().domain(["New York", "California", "Washington", "Oregon"]).range(["#FF1493", "#00A47A", "#0093FF", "#FF6600"]);
+
+
+    let circles = svg2.selectAll("circle").data(data)
+                        .join("circle")
+                        .attr("cx", d => svg2margins.left+Math.floor(priceScale(d.price)+jitter()))
+                        .attr("cy", d => svg2margins.top+ Math.floor(ptsScale(d.points)+jitter()))
+                        .attr("r", 4)
+                        .attr("opacity", 0.5)
+                        .style("fill", d => stateScale(d.state))
+
+      area.append("text")
+          .text("")
+          .attr("id", "title")
+          .attr("x",400)
+          .attr("y",0);
+
+
+      
+      circles.on("mouseover", function()
+      {
+        d3.select(this)
+          .transition().duration(200)
+          .attr("stroke","black")
+          .attr("stroke-width", 2)
+          .attr("r", 10)
+
+
+          let myTitle = d3.select(this).datum().title;
+          d3.select("#title").text(myTitle)
+                  .attr("font-family", "Arial")
+                  .attr("font-size",12)
+                  .style("dominant-baseline","hanging")
+                  .style("text-anchor", "middle")
+                  .style("stroke", "black")
+                  .style("stroke-width", .3);
+
+      })
+      
+
+      circles.on("mouseout", function()
+      {
+        d3.select(this)
+          .transition().duration(200)
+          .attr("stroke-width", 0)
+          .attr("r", 5)
+          .style("fill", d => stateScale(d.state));
+
+          d3.select("#title").text("")
+      })
+
+      
+
+      let legend = d3.select("#legend");
+      stateScale.domain().forEach(index=>
+      {
+        legend.append("span")
+              .text(" "+ index +" ")
+              .style("color", stateScale(index))
+              .on("mouseover", function()
+              {
+                circles.transition().duration(200).style("opacity", d=>
+                {
+                  if(d.state===index)
+                  {
+                    return 2.0
+                  }
+                  else
+                  {
+                    return 0.2
+                  }
+                })
+              })
+      
+      })
+
+      legend.append("span")
+              .text("Clear")
+              .style("color", "black")
+              .on("mouseover", function()
+              {
+                circles.transition().duration(200).style("opacity", 0.5)
+              })
+
+
+    });
+
+    </script>
+
+  <br><br>Problem 2 Responses:
+  <br><br><br> Part A.<br>
+  <br> Important data quality issues I fixed:
+  <br> 1. First, I filtered the data by state. 
+  <br>If the state was not a real state, it was filtered out,
+  because this data point must not be trustworthy.
+  <br>If the state was N/A, NA, or blank, it was filtered out,
+  because it would be impossible to use this data point
+  to figure out if certain wine regions are better or more expensive than others.
+  <br><br> 2. Second, I filtered data by points.
+  <br>Wine is rated out of 100 points, so if the rating for any wine exceeded 100,
+  the data point was filtered out, because this data point must not be trustworthy.
+  <br><br> 3. Third, I made all strings which communicated non-applicable information
+  (e.g., NA, N/A, blank, etc.) into an empty string. 
+  <br>This was done to increase consistency across the board,
+  and would be helpful for accessing or identifying missing data in the future.
+  <br><br> 4. Fourth, I converted price and points data into numbers with no special characters.
+  <br>This was done so these data points could be used to make numeric scales for the x and y axes in the final scatter plot.
+  <br><br> 5. Fifth, I filtered data by country.
+  <br>If the country was an empty string, and therefore not applicable, it was filtered out,
+  because this data point must not be trustworthy.
+  <br><br> In total, I eliminated <b>84</b> data points from the initial 929, leaving me with 845 usable data points.
+
+  <br><br><br> Part B.<br>
+  <br> Design rationale:
+  <br> When creating the margins, scales, and axes, I made the following design choices in order to communicate the information most effectively. 
+  <br> 1. I chose to use a log scale for price, and a linear scale for quality. 
+  <br> I did this because when I used a vertical linear scale for quality, the data was spread relatively evenly across the canvas, 
+  <br>but when I used a horizontal linear scale for price, the data was very clustered toward the middle, indicative of the fact that mid-price wines are significantly more common than very high-price wines. 
+  <br> A logarithmic scale made the data appear less clustered and more spread out, making it more digestible by the user. 
+  <br> 2. I chose to make wide margins on the sides, and slightly narrower (but still roomy) margins on the top and bottom. 
+  <br> I did this because it ensured that the main chart region and the scales were legible within the svg canvas. 
+  <br> 3. I chose to use very light gray gridlines to ensure that data would pop out. 
+  <br> The gridlines are still very visible, and the axes are still drawn in a bold black, so it remains easy to determine coordinates of any given data point.
+
+
+  <br><br><br> Part C.<br>
+  <br> Design rationale:
+  <br> I chose colors that were very bright and different from each other.
+  <br> I chose bright colors in order to ensure that the circles were very easy to see, even with reduced opacity,
+  <br> I chose very different colors so that users did not perceive the data from state to state as being sequential in any way.
+  <br> I made the circles relatively small and with reduced opacity (.5) so that any remaining clustering would cause less confusion for users.
+  <br> 
+  <br> Jittering effect:
+  <br> Advantage: Makes it easier to distinguish between data points that are clustered together, because there is a chance they will be moved apart.
+  <br> Disadvantage: Jittering provides minor inaccuracies in data placement, so the coordinates are no longer necessarily reliable and cannot communicate exact data.
+
+  <br><br><br> Part D.<br>
+  <br> Design rationale:
+  <br> I chose to make dots larger and be surrounded by a black outline when hovered over.
+  <br> These choices combined to make dots being hovered over very distinctive from the other dots, both in and out of their state category.
+  <br> I also chose to make the title label in the top center, so users do not have to search around the (relatively crowded) canvas for labels.
+  <br> Rather, it is reliably in the same position no matter which point is being selected.
+  <br>
+  <br> Benefits to users:
+  <br> This approach allows users to precisely identify a single data point, without having to use its coordinates to figure out which data point the circle maps to.
+  <br> Where this approach may be confusing:
+  <br> In highly clustered areas, it may be very difficult for users to pick out one specific circle that they are targeting.
+  <br> Rather, they may end up picking nearby circles, and finding their titles instead.
+  <br> Further, this approach does not provide any other specific information beyond the title and (by virtue of the color) the state.
+  <br> For example, exact coordinates are still not revealed.
+
+</p>
